@@ -7,7 +7,7 @@ import urllib.request
 from urllib.parse import urlparse
 from googlenewsdecoder import gnewsdecoder
 
-DB_PATH = './data/crawler.db'
+from config_loader import DB_PATH
 
 def extract_domain(url: str) -> str:
     try:

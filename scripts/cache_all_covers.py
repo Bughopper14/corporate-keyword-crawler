@@ -6,8 +6,7 @@ import ssl
 import hashlib
 import time
 
-DB_PATH = './data/crawler.db'
-SAVE_DIR = './public/covers'
+from config_loader import DB_PATH, COVERS_DIR as SAVE_DIR
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 

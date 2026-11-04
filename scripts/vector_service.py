@@ -12,8 +12,7 @@ import argparse
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-DB_SQLITE = './data/crawler.db'
-VECTOR_PATH = './data/vector_store'
+from config_loader import DB_PATH as DB_SQLITE, VECTOR_PATH
 COLLECTION_NAME = 'news_articles'
 
 def get_chroma():

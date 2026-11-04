@@ -2,13 +2,14 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import config from './config';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DB_PATH = config.database.sqlitePath;
+const DATA_DIR = path.dirname(DB_PATH);
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = path.join(DATA_DIR, 'crawler.db');
 const db = new Database(DB_PATH);
 
 // Set WAL mode for fast concurrent writes

@@ -24,8 +24,7 @@ import hashlib
 import ssl
 import random
 
-DB_PATH = "./data/crawler.db"
-COVERS_DIR = "./public/covers"
+from config_loader import DB_PATH, COVERS_DIR, ROUTER_BASE_URL
 os.makedirs(COVERS_DIR, exist_ok=True)
 
 ssl_ctx = ssl.create_default_context()

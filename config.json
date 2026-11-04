@@ -1,0 +1,27 @@
+{
+  "app": {
+    "name": "CorporateKeywordCrawler",
+    "basePath": "",
+    "port": 3000,
+    "host": "localhost"
+  },
+  "database": {
+    "sqlitePath": "data/crawler.db",
+    "vectorStorePath": "data/vector_store"
+  },
+  "assets": {
+    "coversDir": "public/covers"
+  },
+  "llm": {
+    "routerBaseUrl": "http://localhost:8000/v1",
+    "model": "gpt-4o-mini",
+    "timeoutMs": 8000
+  },
+  "crawler": {
+    "defaultTimeRange": "7d",
+    "maxResultsPerQuery": 30,
+    "requestTimeoutMs": 10000,
+    "gentleDelayMinMs": 1200,
+    "gentleDelayMaxMs": 2000
+  }
+}
