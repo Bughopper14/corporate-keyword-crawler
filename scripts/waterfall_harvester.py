@@ -124,26 +124,44 @@ def extract_instagram_caption(url: str) -> str:
     return ""
 
 def resolve_syndicated_mirror(title: str, domain: str) -> str:
-    """Layer 3: Queries public syndicated news aggregators for identical wire stories."""
+    """Layer 3: Queries Google News RSS search for syndicated open mirror articles, avoiding WAF/paywall."""
     clean_t = re.sub(r'(\s*-\s*[A-Za-z0-9\s]+$)|(\s*\|\s*[A-Za-z0-9\s]+$)', '', title).strip()
     clean_t = re.sub(r'[^a-zA-Z0-9\s]', ' ', clean_t)
-    words = clean_t.split()[:7]
-    if len(words) < 3:
+    words = [w for w in clean_t.split() if len(w) > 2][:6]
+    if len(words) < 2:
         return ""
     
     q_str = " ".join(words)
-    # Search public syndicated wire
     try:
-        url_api = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q_str)}"
-        req = urllib.request.Request(url_api, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        import xml.etree.ElementTree as ET
+        rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(q_str)}&hl=id&gl=ID&ceid=ID:id"
+        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=8, context=ssl_ctx) as r:
-            html = r.read().decode('utf-8', errors='ignore')
-            links = re.findall(r'<a class=\"result__url\" href=\"(.*?)\"', html)
-            for link in links:
-                unquoted = urllib.parse.unquote(link)
-                m_target = re.search(r'uddg=(https?://[^&]+)', unquoted)
-                target_url = m_target.group(1) if m_target else link
-                if not any(blocked in target_url for blocked in ['kontan.co.id', 'bisnis.com', 'tempo.co', 'msn.com']):
+            xml_data = r.read()
+            root = ET.fromstring(xml_data)
+            items = root.findall('.//item')
+            for item in items[:6]:
+                source_elem = item.find('source')
+                source_name = source_elem.text.lower() if (source_elem is not None and source_elem.text) else ''
+                link_elem = item.find('link')
+                raw_link = link_elem.text if (link_elem is not None and link_elem.text) else ''
+                
+                # Filter out known strict WAF paywalls
+                if any(blocked in source_name for blocked in ['kontan', 'bisnis', 'tempo', 'msn']):
+                    continue
+                
+                # If Google RSS redirect wrapper, decode it using googlenewsdecoder if available
+                target_url = raw_link
+                if 'news.google.com' in raw_link:
+                    try:
+                        from googlenewsdecoder import gnewsdecoder
+                        dec = gnewsdecoder(raw_link, interval=1)
+                        if dec and dec.get('decoded_url'):
+                            target_url = dec.get('decoded_url')
+                    except Exception:
+                        pass
+                
+                if target_url and not any(blocked in target_url for blocked in ['kontan.co.id', 'bisnis.com', 'tempo.co', 'msn.com']):
                     art = extract_direct_article(target_url)
                     if art and len(art) > 300:
                         return art
@@ -207,13 +225,15 @@ def execute_full_harvest_cycle():
     """)
     conn.commit()
 
-    # 2. Select candidates that lack full content
+    # 2. Select candidates that lack full content (Limit to top 30 most recent to keep run times agile)
     c.execute("""
         SELECT id, domain, url, title, snippet, image_url, harvest_status 
         FROM scraped_records 
         WHERE (full_content IS NULL OR length(full_content) < 250)
           AND harvest_status != 'SOCIAL_MICROBLOG'
-        ORDER BY id DESC;
+          AND harvest_status != 'EXPIRED_OR_SPAM'
+        ORDER BY id DESC
+        LIMIT 30;
     """)
     candidates = [dict(r) for r in c.fetchall()]
 
